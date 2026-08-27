@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>樂齡活腦 - 實物圖卡列印學習單 (大字大圖版)</title>
+  <style>
+    :root {
+      --primary-color: #d32f2f;
+      --bg-color: #f7f7f7;
+      --card-border: #333;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: "Microsoft JhengHei", "PingFang TC", Arial, sans-serif;
+    }
+
+    body {
+      background-color: var(--bg-color);
+      color: #333;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    /* 螢幕顯示上的控制面板 */
+    .no-print-panel {
+      background: #ffffff;
+      padding: 15px 25px;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      display: flex;
+      flex-wrap: wrap;
+      gap: 15px;
+      justify-content: center;
+      align-items: center;
+      max-width: 900px;
+      width: 100%;
+      margin-bottom: 25px;
+    }
+
+    .control-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    label {
+      font-size: 1.1rem;
+      font-weight: bold;
+    }
+
+    select {
+      font-size: 1rem;
+      padding: 8px 12px;
+      border: 2px solid #ccc;
+      border-radius: 6px;
+      background: #fff;
+    }
+
+    .btn {
+      font-size: 1rem;
+      font-weight: bold;
+      padding: 10px 20px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      color: white;
+      transition: background 0.2s;
+    }
+
+    .btn-print { background-color: #2e7d32; }
+    .btn-print:hover { background-color: #1b5e20; }
+    .btn-refresh { background-color: var(--primary-color); }
+    .btn-refresh:hover { background-color: #b71c1c; }
+
+    /* 列印區域標題 */
+    .print-header {
+      text-align: center;
+      margin-bottom: 20px;
+      width: 100%;
+    }
+
+    .print-header h1 {
+      font-size: 2rem;
+      color: #111;
+      margin-bottom: 5px;
+    }
+
+    .print-header p {
+      font-size: 1.1rem;
+      color: #555;
+    }
+
+    /* 圖卡網格排版：固定單列 2 張大圖 (兩欄) */
+    .card-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr); /* 核心修改：固定一列2張 */
+      gap: 20px;
+      width: 100%;
+      max-width: 750px;
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    }
+
+    /* 單張卡牌樣式 (大尺寸放大方便剪裁與長輩觀看) */
+    .card-item {
+      border: 3px dashed #555; /* 虛線方便剪下 */
+      border-radius: 12px;
+      padding: 10px;
+      background: #fff;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      aspect-ratio: 1 / 1;
+      page-break-inside: avoid;
+      break-inside: avoid;
+    }
+
+    .card-img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      border-radius: 8px;
+      display: block;
+    }
+
+    /* 🖨️ 專屬列印樣式設定 (@media print) */
+    @media print {
+      body {
+        background-color: #fff;
+        padding: 0;
+      }
+
+      .no-print-panel {
+        display: none !important;
+      }
+
+      .card-grid {
+        max-width: 100%;
+        box-shadow: none;
+        padding: 0;
+        gap: 15px;
+        grid-template-columns: repeat(2, 1fr);
+      }
+
+      .print-header h1 {
+        font-size: 1.8rem;
+      }
+
+      .card-item {
+        border: 2px dashed #000;
+        page-break-inside: avoid;
+        break-inside: avoid;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- 控制面板 (列印時自動隱藏) -->
+  <div class="no-print-panel">
+    <div class="control-group">
+      <label for="themeSelect">🎯 選擇主題：</label>
+      <select id="themeSelect">
+        <option value="fruit">🍍 四季水果篇</option>
+        <option value="food">🍱 美味佳餚篇</option>
+        <option value="vintage">📻 懷舊古物篇</option>
+        <option value="flower">🌸 美麗花卉篇</option>
+        <option value="animal">🐱 萌寵動物篇</option>
+      </select>
+    </div>
+
+    <div class="control-group">
+      <label for="pairSelect">🧩 排版與張數：</label>
+      <select id="pairSelect">
+        <option value="4">2 × 4 (4 對 / 8 張大圖)</option>
+        <option value="8" selected>2 × 8 (8 對 / 16 張大圖)</option>
+        <option value="12">2 × 12 (12 對 / 24 張大圖)</option>
+      </select>
+    </div>
+
+    <button class="btn btn-refresh" id="refreshBtn">🎲 換一批圖案</button>
+    <button class="btn btn-print" id="printBtn">🖨️ 直接列印學習單</button>
+  </div>
+
+  <!-- 列印區域 -->
+  <div class="print-header">
+    <h1>樂齡實物記憶對對碰 - 列印圖卡紙</h1>
+    <p>請沿著虛線將圖卡剪下，即可進行實體卡牌配對遊戲！</p>
+  </div>
+
+  <div class="card-grid" id="cardGrid"></div>
+
+  <script>
+    // 實物照片資料庫 (擴充至每組 12 張以上，支援 2x12 大圖需求)
+    const cardLibrary = {
+      fruit: [
+        "https://images.unsplash.com/photo-1550258987-190a2d41a8ba?w=500&auto=format&fit=crop",
+        "https://images.unsplash.com/photo-1571771894821-ce9b6c11b08e?w=500&auto=format&fit=crop",
+        "https://images.unsplash.com/photo-1587049352846-4a222e784d38?w=500&auto=format&fit=crop",
+        "https://images.unsplash.com/photo-1537640538966-79f369143f8f?w=500&auto=format&fit=crop",
+        "https://images.unsplash.com/photo-1553279768-865429fa0078?w=500&auto=format&fit=crop",
+        "https://images.unsplash.com/photo-1611080626919-7cf5a9dbab5b?w=500&auto=format&fit=crop",
+        "https://images.unsplash.com/photo-1534531141161-e41d133a8b50?w=500&auto=format&fit=crop",
+        "https://images.unsplash.com/photo-1464965911861-746a04b4bca6?w=500&auto=format&fit=crop",
+        "https://images.unsplash.com/photo-1528825871115-3581a5387919?w=500&auto=format&fit=crop",
+        "https://images.unsplash.com/photo-1559181567-c3190ca9959b?w=500&auto=format&fit=crop",
+        "https://images.unsplash.com/photo-1601004890684-d8cbf643f5f2?w=500&auto=format&fit=crop",
+        "https://images.unsplash.com/photo-1528821128474-27f963b072b7?w=500&auto=format&fit=crop"
+      ],
+      food: [
+        "https://images.unsplash.com/photo-1558857563-b371033873b8?w=500&auto=format&fit=crop",
+        "https://images.unsplash.com/photo-1512058564366-18510be2db19?w=500&auto=format&fit=crop",
+        "https://images.unsplash.com/photo-1496116218417-1a781b1c416c?w=500&auto=format&fit=crop",
+        "https://images.unsplash.com/photo-1569718212165-3a8278d5f624?w=500&auto=format&fit=crop",
+        "https://images.unsplash.com/photo-1579871494447-9811cf80d66c?w=500&auto=format&fit=crop",
+        "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=500&auto=format&fit=crop",
+        "https://images.unsplash.com/photo-1513104890138-7c749659a591?w=500&auto=format&fit=crop",
+        "https://images.unsplash.com/photo-1576107232684-1279f3908594?w=500&auto=format&fit=crop",
+        "https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?w=500&auto=format&fit=crop",
+        "https://images.unsplash.com/photo-1540420773420-3366772f4999?w=500&auto=format&fit=crop",
+        "https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=500&auto=format&fit=crop",
+        "https://images.unsplash.com/photo-1555126634-323283e090fa?w=500&auto=format&fit=crop"
+      ],
+      vintage: [
+        "https://images.unsplash.com/photo-1590602847861-f357a9332bbc?w=500&auto=format&fit=crop",
+        "https://images.unsplash.com/photo-1539375665275-f9de415ef9ac?w=500&auto=format&fit=crop",
+        "https://images.unsplash.com/photo-1528576832628-97e38ee1a221?w=500&auto=format&fit=crop",
+        "https://images.unsplash.com/photo-1485965120184-e220f721d03e?w=500&auto=format&fit=crop",
+        "https://images.unsplash.com/photo-1593305841991-05c297ba4575?w=500&auto=format&fit=crop",
+        "https://images.unsplash.com/photo-1520923642038-b4259acecbd7?w=500&auto=format&fit=crop",
+        "https://images.unsplash.com/photo-1618941723615-331006a86c67?w=500&auto=format&fit=crop",
+        "https://images.unsplash.com/photo-1517256064527-09c73fc73e38?w=500&auto=format&fit=crop",
+        "https://images.unsplash.com/photo-1526170375885-4d8ecf77b99f?w=500&auto=format&fit=crop",
+        "https://images.unsplash.com/photo-1550009158-9ebf69173e03?w=500&auto=format&fit=crop",
+        "https://images.unsplash.com/photo-1584438784894-089d6a62b8fa?w=500&auto=format&fit=crop",
+        "https://images.unsplash.com/photo-1563245372-f21724e3856d?w=500&auto=format&fit=crop"
+      ],
+      flower: [
+        "https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=500&auto=format&fit=crop",
+        "https://images.unsplash.com/photo-1490750967868-88aa4486c946?w=500&auto=format&fit=crop",
+        "https://images.unsplash.com/photo-1522383225653-ed111181a951?w=500&auto=format&fit=crop",
+        "https://images.unsplash.com/photo-1508610048659-a06b669e3321?w=500&auto=format&fit=crop",
+        "https://images.unsplash.com/photo-1563245372-f21724e3856d?w=500&auto=format&fit=crop",
+        "https://images.unsplash.com/photo-1597848212624-a19eb35e2651?w=500&auto=format&fit=crop",
+        "https://images.unsplash.com/photo-1567684014761-b65e2e59b9eb?w=500&auto=format&fit=crop",
+        "https://images.unsplash.com/photo-1509316975850-ff9c5deb0cd9?w=500&auto=format&fit=crop",
+        "https://images.unsplash.com/photo-1561181286-d3fee7d55364?w=500&auto=format&fit=crop",
+        "https://images.unsplash.com/photo-1533616688419-b7a585564566?w=500&auto=format&fit=crop",
+        "https://images.unsplash.com/photo-1465146344425-f00d5f5c8f07?w=500&auto=format&fit=crop",
+        "https://images.unsplash.com/photo-1507290439931-a861b5a38200?w=500&auto=format&fit=crop"
+      ],
+      animal: [
+        "https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?w=500&auto=format&fit=crop",
+        "https://images.unsplash.com/photo-1543466835-00a7907e9de1?w=500&auto=format&fit=crop",
+        "https://images.unsplash.com/photo-1537151608828-ea2b11777ee8?w=500&auto=format&fit=crop",
+        "https://images.unsplash.com/photo-1552053831-71594a27632d?w=500&auto=format&fit=crop",
+        "https://images.unsplash.com/photo-1583511655857-d19b40a7a54e?w=500&auto=format&fit=crop",
+        "https://images.unsplash.com/photo-1517849845537-4d257902454a?w=500&auto=format&fit=crop",
+        "https://images.unsplash.com/photo-1535268647677-300dbf3d78d1?w=500&auto=format&fit=crop",
+        "https://images.unsplash.com/photo-1548767797-d8c844163c4c?w=500&auto=format&fit=crop",
+        "https://images.unsplash.com/photo-1574158622682-e40e69881006?w=500&auto=format&fit=crop",
+        "https://images.unsplash.com/photo-1533738363-b7f9aef128ce?w=500&auto=format&fit=crop",
+        "https://images.unsplash.com/photo-1561037404-61cd46aa615b?w=500&auto=format&fit=crop",
+        "https://images.unsplash.com/photo-1425082661705-1834bfd09dca?w=500&auto=format&fit=crop"
+      ]
+    };
+
+    const cardGrid = document.getElementById('cardGrid');
+    const themeSelect = document.getElementById('themeSelect');
+    const pairSelect = document.getElementById('pairSelect');
+    const printBtn = document.getElementById('printBtn');
+    const refreshBtn = document.getElementById('refreshBtn');
+
+    function renderPrintableCards() {
+      const theme = themeSelect.value;
+      const pairCount = parseInt(pairSelect.value);
+      const rawList = cardLibrary[theme] || cardLibrary.fruit;
+
+      // 隨機選出指定對數的圖案
+      const shuffled = [...rawList].sort(() => 0.5 - Math.random());
+      const selected = shuffled.slice(0, pairCount);
+
+      // 複製成成對圖案（兩兩一組，供實體配對）
+      const deck = [...selected, ...selected].sort(() => 0.5 - Math.random());
+
+      cardGrid.innerHTML = '';
+      deck.forEach(imgUrl => {
+        const item = document.createElement('div');
+        item.className = 'card-item';
+        item.innerHTML = `<img src="${imgUrl}" class="card-img" alt="實物圖卡">`;
+        cardGrid.appendChild(item);
+      });
+    }
+
+    // 事件控制
+    themeSelect.addEventListener('change', renderPrintableCards);
+    pairSelect.addEventListener('change', renderPrintableCards);
+    refreshBtn.addEventListener('click', renderPrintableCards);
+    printBtn.addEventListener('click', () => {
+      window.print();
+    });
+
+    // 初次載入
+    window.onload = renderPrintableCards;
+  </script>
+</body>
+</html>
